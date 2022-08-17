@@ -1,26 +1,42 @@
 # Chat App
 
-Chat App is an app for mobile devices using React Native. 
+Chat App is an app for mobile devices using React Native.
 
 ## Description
 
-This app provide users with a chat interface and options to share images and their location.
+This app provide users with a chat interface through GiftedChat and options to share images and location.
 
-## Getting Started
+## Getting Started & Installation
 
-### Dependencies
+### Install dependencies for meet-app with npm
 
-* Describe any prerequisites, libraries, OS version, etc., needed before installing program.
-* ex. Windows 10
+```
+  git clone [repository]
+  cd chat-app
+  npm install
+  
+```
 
-### Installing
+### View simulation on your phone
 
-* How/where to download your program
-* Any modifications needed to be made to files/folders
+* Type in terminal
+```
+expo start OR npm run start
+```
+
+* Download simulator for iPhone [Expo Go](https://apps.apple.com/de/app/expo-go/id982107779)
+- Download Emulator for Android in [Android Studio](https://developer.android.com/studio)
+* Scan QR code
+
+## Dependencies
+
+### Development
+
+* React native
+* Gifted Chat (library)
+* Expo CLI
 
 ## Authors
 
-Contributors names and contact info
-
-ex. Halli Bentley  
-ex. [@hallibentley](https://github.com/hallibentley)
+Halli Bentley  
+[@hallibentley](https://github.com/hallibentley)
