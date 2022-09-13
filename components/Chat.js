@@ -15,6 +15,7 @@ export default class Chat extends Component {
     super();
     this.state = {
       messages: [],
+      uid: 0,
       user: {
         _id: '',
         name: ''
@@ -31,6 +32,7 @@ export default class Chat extends Component {
       appId: "1:12796364052:web:b16729f8247a508426ee01",
       measurementId: "G-C6BVFMNGM0",
     };
+
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
@@ -39,6 +41,41 @@ export default class Chat extends Component {
     this.referenceChatMessages = firebase.firestore().collection('messages');
 
   }
+
+
+  componentDidMount() {
+    //Set name as title chat
+    let { name } = this.props.route.params;
+    this.props.navigation.setOptions({ title: name });
+
+    this.referenceChatMessages = firebase
+      .firestore()
+      .collection('messages');
+
+    //Authenticate user anonymously//
+    this.authUnsubscribe = firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) {
+        firebase.auth().signInAnonymously();
+      }
+      this.setState({
+        uid: user.uid,
+        messages: [],
+        user: {
+          _id: user.uid,
+          name: name
+        }
+      });
+      this.unsubscribe = this.referenceChatMessages
+        .orderBy("createdAt", "desc")
+        .onSnapshot(this.onCollectionUpdate);
+    });
+  }
+
+  componentWillUnmount() {
+    this.unsubscribe();
+    this.authUnsubscribe();
+  }
+
   //GOOD//
   onCollectionUpdate = (querySnapshot) => {
     const messages = [];
@@ -57,26 +94,6 @@ export default class Chat extends Component {
       messages,
     });
   };
-
-  componentDidMount() {
-    //Set name as title chat
-    let { name } = this.props.route.params;
-    this.props.navigation.setOptions({ title: name });
-
-    //Authenticate user anonymously//
-    this.authUnsubscribe = firebase.auth().onAuthStateChanged((user) => {
-      if (!user) {
-        firebase.auth().signInAnonymously();
-      }
-      this.setState({
-        uid: user.uid,
-        messages: [],
-      });
-      this.unsubscribe = this.referenceChatMessages
-        .orderBy("createdAt", "desc")
-        .onSnapshot(this.onCollectionUpdate);
-    });
-  }
 
   //GOOD//
   addMessages(message) {
@@ -108,7 +125,7 @@ export default class Chat extends Component {
         }}
       />
     )
-  }
+  };
 
   render() {
     const { color } = this.props.route.params;
