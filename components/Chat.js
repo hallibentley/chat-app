@@ -1,13 +1,31 @@
 import React, { Component } from 'react';
+
 import { View, Text, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { GiftedChat, Bubble } from 'react-native-gifted-chat';
+
+// const firebase = require("firebase");
+// import "firebase/firestore";
+
+// import { db } from "../firebase.config";
+
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
+import 'firebase/compat/firestore';
 
 // const firebase = require('firebase');
 // require('firebase/firestore');
 
-import firebase from 'firebase/compat/app';
-import 'firebase/compat/firestore';
-import 'firebase/compat/auth';
+
+//Setting up and connecting Firebase//
+const firebaseConfig = {
+  apiKey: "AIzaSyAuXvryfG3nGzIYar-9FivpXOutVXt8KKk",
+  authDomain: "test-2fbfb.firebaseapp.com",
+  projectId: "test-2fbfb",
+  storageBucket: "test-2fbfb.appspot.com",
+  messagingSenderId: "12796364052",
+  appId: "1:12796364052:web:b16729f8247a508426ee01",
+  measurementId: "G-C6BVFMNGM0",
+};
 
 export default class Chat extends Component {
 
@@ -19,64 +37,15 @@ export default class Chat extends Component {
       user: {
         _id: '',
         name: ''
-      }
-    };
-
-    //Setting up and connecting Firebase//
-    const firebaseConfig = {
-      apiKey: "AIzaSyAuXvryfG3nGzIYar-9FivpXOutVXt8KKk",
-      authDomain: "test-2fbfb.firebaseapp.com",
-      projectId: "test-2fbfb",
-      storageBucket: "test-2fbfb.appspot.com",
-      messagingSenderId: "12796364052",
-      appId: "1:12796364052:web:b16729f8247a508426ee01",
-      measurementId: "G-C6BVFMNGM0",
+      },
     };
 
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
 
-    //reference to collection. stores and retrieves the chat messages your users send//
-    this.referenceChatMessages = firebase.firestore().collection('messages');
-
   }
 
-
-  componentDidMount() {
-    //Set name as title chat
-    let { name } = this.props.route.params;
-    this.props.navigation.setOptions({ title: name });
-
-    this.referenceChatMessages = firebase
-      .firestore()
-      .collection('messages');
-
-    //Authenticate user anonymously//
-    this.authUnsubscribe = firebase.auth().onAuthStateChanged(async (user) => {
-      if (!user) {
-        firebase.auth().signInAnonymously();
-      }
-      this.setState({
-        uid: user.uid,
-        messages: [],
-        user: {
-          _id: user.uid,
-          name: name
-        }
-      });
-      this.unsubscribe = this.referenceChatMessages
-        .orderBy("createdAt", "desc")
-        .onSnapshot(this.onCollectionUpdate);
-    });
-  }
-
-  componentWillUnmount() {
-    this.unsubscribe();
-    this.authUnsubscribe();
-  }
-
-  //GOOD//
   onCollectionUpdate = (querySnapshot) => {
     const messages = [];
     // go through each document
@@ -87,7 +56,10 @@ export default class Chat extends Component {
         _id: data._id,
         text: data.text,
         createdAt: data.createdAt.toDate(),
-        user: data.user
+        user: {
+          _id: data.user._id,
+          name: data.user.name,
+        },
       });
     });
     this.setState({
@@ -95,25 +67,81 @@ export default class Chat extends Component {
     });
   };
 
-  //GOOD//
-  addMessages(message) {
+
+
+  componentDidMount() {
+    //Set name as title chat
+    let { name } = this.props.route.params;
+    this.props.navigation.setOptions({ title: name });
+
+    //reference to collection. stores and retrieves the chat messages your users send//
+    this.referenceChatMessages = firebase.firestore().collection('messages');
+
+
+    // Authenticates user via Firebase
+    this.authUnsubscribe = firebase.auth().onAuthStateChanged((user) => {
+      if (!user) {
+        firebase.auth().signInAnonymously();
+      }
+      this.setState({
+        uid: user.uid,
+        messages: [],
+        user: {
+          _id: user.uid,
+          name: name,
+        },
+      });
+
+      this.referenceMessagesUser = firebase
+        .firestore()
+        .collection("messages")
+        .where("uid", '==', this.state.uid);
+    });
+  }
+
+  //Authenticate user anonymously//
+  //   this.authUnsubscribe = firebase.auth().onAuthStateChanged(async (user) => {
+  //     if (!user) {
+  //       firebase.auth().signInAnonymously();
+  //     }
+  //     this.setState({
+  //       uid: user.uid,
+  //       messages: [],
+  //       user: {
+  //         _id: user.uid,
+  //         name: name
+  //       }
+  //     });
+  //     this.unsubscribe = this.referenceChatMessages
+  //       .orderBy("createdAt", "desc")
+  //       .onSnapshot(this.onCollectionUpdate);
+  //   });
+  // }
+
+
+  componentWillUnmount() {
+    this.authUnsubscribe();
+  }
+
+  addMessages() {
+    const message = this.state.messages[0];
     this.referenceChatMessages.add({
       _id: message._id,
       _id: message._id,
       text: message.text,
-      createdAt: message.createdAt.toDate(),
+      createdAt: message.createdAt,
       user: message.user
     });
   };
 
-  //GOOD//
   onSend(messages = []) {
     this.setState(previousState => ({
       messages: GiftedChat.append(previousState.messages, messages),
-    }))
+    }), () => {
+      this.addMessages();
+    });
   }
 
-  //GOOD//
   renderBubble(props) {
     return (
       <Bubble
@@ -128,36 +156,26 @@ export default class Chat extends Component {
   };
 
   render() {
-    const { color } = this.props.route.params;
+    let { color, name } = this.props.route.params;
 
     return (
-      <View style={{ backgroundColor: color, flex: 1 }}>
-        <View style={styles.container}>
-          <Text style={styles.text}>Chat Screen</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <GiftedChat
-            renderBubble={this.renderBubble.bind(this)}
-            messages={this.state.messages}
-            onSend={(messages) => this.onSend(messages)}
-            user={{ _id: this.state.user._id, name: this.state.user.name }}
-          />
-          {Platform.OS === 'android' ? (<KeyboardAvoidingView behavior="height" />
-          ) : null}
-        </View>
 
+      <View style={[{ backgroundColor: color }, styles.container]}>
+        <GiftedChat
+          renderBubble={this.renderBubble.bind(this)}
+          messages={this.state.messages}
+          onSend={(messages) => this.onSend(messages)}
+          user={{ _id: this.state.user._id, name: name }}
+        />
+        {Platform.OS === 'android' ? (<KeyboardAvoidingView behavior="height" />
+        ) : null}
       </View>
     );
   }
-
 }
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center'
+    flex: 1,
   },
-  text: {
-    color: '#FFFFFF'
-  }
 })
