@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
 
 import { View, Text, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
-import { GiftedChat, Bubble } from 'react-native-gifted-chat';
+import { GiftedChat, Bubble, InputToolbar } from 'react-native-gifted-chat';
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, orderBy, onSnapshot, query, addDoc } from 'firebase/firestore';
 import { getAuth, onAuthStateChanged, signInAnonymously } from "firebase/auth";
 
-// const firebase = require("firebase");
-// import "firebase/firestore";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 
-//Setting up and connecting Firebase//
+//Setting up and connecting Firebase (chat-app-2)//
 const firebaseConfig = {
   apiKey: "AIzaSyB0WFSvDLrP6e0kjNFBvo3Tn1JAHnhnEJk",
   authDomain: "chat-app-2-fc76d.firebaseapp.com",
@@ -19,14 +19,6 @@ const firebaseConfig = {
   messagingSenderId: "785034198767",
   appId: "1:785034198767:web:71a34f5d3039ed1990e51a"
 };
-
-// apiKey: "AIzaSyAuXvryfG3nGzIYar-9FivpXOutVXt8KKk",
-// authDomain: "test-2fbfb.firebaseapp.com",
-// projectId: "test-2fbfb",
-// storageBucket: "test-2fbfb.appspot.com",
-// messagingSenderId: "12796364052",
-// appId: "1:12796364052:web:b16729f8247a508426ee01",
-// measurementId: "G-C6BVFMNGM0",
 
 //Initialize firebase
 const app = initializeApp(firebaseConfig);
@@ -39,28 +31,48 @@ export default function Chat(props) {
   let { name } = props.route.params;
   const [messages, setMessages] = useState([]);
   const [uid, setUid] = useState();
-  // const [isConnected, setIsConnected] = useState();
+  const [isConnected, setIsConnected] = useState();
 
   const messagesCollection = collection(db, "messages");
 
   useEffect(() => {
-    const authUnsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) {
-        signInAnonymously(auth);
+    NetInfo.fetch().then((connection) => {
+      if (connection.isConnected) {
+        setIsConnected(true);
+      } else {
+        setIsConnected(false);
       }
-      setUid(user.uid);
     });
+  }, []);
 
-    const messagesQuery = query(messagesCollection, orderBy("createdAt", "desc"));
+  useEffect(() => {
+    if (isConnected) {
+      const authUnsubscribe = onAuthStateChanged(auth, (user) => {
+        if (!user) {
+          signInAnonymously(auth);
+        }
+        setUid(user.uid);
+      });
 
-    let unsubscribe = onSnapshot(messagesQuery, onCollectionUpdate);
+      const messagesQuery = query(messagesCollection, orderBy("createdAt", "desc"));
 
-    return () => {
-      unsubscribe();
-      authUnsubscribe();
+      let unsubscribe = onSnapshot(messagesQuery, onCollectionUpdate);
+
+      return () => {
+        unsubscribe();
+        authUnsubscribe();
+      }
+    } else {
+      console.log("not connected");
+      getMessages();
     }
+  }, [isConnected]);
 
-  });
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveMessages();
+    }
+  }, [messages]);
 
   const onCollectionUpdate = (querySnapshot) => {
     let messages = [];
@@ -79,7 +91,7 @@ export default function Chat(props) {
     setMessages(
       messages
     );
-  }
+  };
 
   const addMessage = (message) => {
     addDoc(messagesCollection, {
@@ -93,7 +105,39 @@ export default function Chat(props) {
   const onSend = (messages = []) => {
     addMessage(messages[0]);
     setMessages((prevMessages) => GiftedChat.append(prevMessages, messages));
+    // saveMessages();
+    console.log(AsyncStorage.getItem("messages"));
   };
+
+  const saveMessages = async () => {
+    try {
+      const jsonMessages = JSON.stringify(messages);
+      await AsyncStorage.setItem("messages", jsonMessages);
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  const getMessages = async () => {
+    let messages = "";
+
+    try {
+      messages = await AsyncStorage.getItem("messages") || [];
+      // console.log(JSON.parse(messages));
+      setMessages(JSON.parse(messages));
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  const deleteMessages = async () => {
+    try {
+      await AsyncStorage.removeItem("messages");
+      setMessages([]);
+    } catch (error) {
+      console.log(error.message);
+    }
+  }
 
   const renderBubble = (props) => (
     <Bubble
@@ -117,11 +161,22 @@ export default function Chat(props) {
     />
   );
 
+  const renderInputToolbar = (props) => {
+    if (isConnected) {
+      return <InputToolbar {...props} />
+    }
+  };
+
+
+
+
+
   return (
 
     <View style={{ flex: 1 }}>
       <GiftedChat
         renderBubble={renderBubble}
+        renderInputToolbar={renderInputToolbar}
         messages={messages}
         onSend={messages => onSend(messages)}
         user={{ _id: uid, name: name, }}
