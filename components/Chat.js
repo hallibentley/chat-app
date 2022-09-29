@@ -96,6 +96,10 @@ export default function Chat(props) {
     })
   }
 
+  const _onPress = () => {
+    alert("You tapped the button!")
+  };
+
   const onSend = (messages = []) => {
     addMessage(messages[0]);
     setMessages((prevMessages) => GiftedChat.append(prevMessages, messages));

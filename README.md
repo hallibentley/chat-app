@@ -8,7 +8,7 @@ This app provide users with a chat interface through GiftedChat and options to s
 
 ## Getting Started & Installation
 
-### Install dependencies for meet-app with npm
+### Install dependencies
 
 ```
   git clone [repository]
@@ -30,11 +30,12 @@ expo start OR npm run start
 
 ## Dependencies
 
-### Development
+### Development dependencies
 
 * React native
 * Gifted Chat (library)
 * Expo CLI
+* Google firestore DB
 
 ## Authors
 
